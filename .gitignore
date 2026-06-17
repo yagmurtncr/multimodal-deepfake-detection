@@ -1,0 +1,47 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# ===== Model ağırlıkları / checkpoint'ler =====
+# Eğitilmiş model (best_model.pt) repoya dahil DEĞİL — boyut + yeniden üretilebilirlik.
+# README'deki talimatlarla eğitin veya kendi checkpoint'inizi MODEL_PATH ile verin.
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.h5
+*.safetensors
+
+# ===== Demo runtime çıktıları =====
+# Kullanıcı yüklemeleri çalışma anında oluşur; versiyonlanmaz.
+demo_site/uploads/
+
+# ===== FakeAVCeleb veri seti klipleri =====
+# FakeAVCeleb yalnızca araştırma amaçlı lisanslıdır ve yeniden dağıtımı yasaktır;
+# ayrıca gerçek kişilerin deepfake'leri olduğu için gizlilik nedeniyle yüklenmez.
+# Kendi örneklerinizi demo_site/samples/ içine ekleyin (bkz. samples/README.md).
+demo_site/samples/**/*.mp4
+demo_site/samples/**/*.avi
+demo_site/samples/**/*.mov
+demo_site/samples/**/*.mkv
+
+# ===== İşletim sistemi / editör =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# ===== Loglar / geçici =====
+*.log
+*.tmp
+
+# ===== Üretilmiş sunum çıktıları =====
+slides/*.pdf
+slides/*.pptx

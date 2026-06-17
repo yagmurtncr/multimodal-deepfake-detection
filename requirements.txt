@@ -1,0 +1,31 @@
+# Multimodal Deepfake Detection — Python bağımlılıkları
+# Python 3.10+ önerilir. GPU (CUDA) eğitim için gerekli; demo CPU'da da çalışır (yavaş).
+# Kurulum:  pip install -r requirements.txt
+
+# ----- Çekirdek (demo + eğitim) -----
+torch
+torchvision
+timm
+transformers
+facenet-pytorch
+librosa
+opencv-python
+numpy
+pandas
+scikit-learn
+tqdm
+
+# ----- Demo web arayüzü (demo_site/) -----
+flask
+
+# ----- Eğitim görselleştirme (notebook_v2/) -----
+matplotlib
+seaborn
+
+# ----- Opsiyonel: SyncNet karşılaştırması (notebook_v2/syncnet_*.py) -----
+# python_speech_features
+# scipy
+
+# ----- Opsiyonel: sunum/PDF üretimi (slides/) -----
+# reportlab
+# pillow

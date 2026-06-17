@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Grup 11 · Multimodal Deepfake Tespit · Canlı Demo</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container topbar-inner">
+    <div class="brand">
+      <span class="brand-tag">MULTIMODAL</span>
+      <h1>Deepfake Tespit Sistemi</h1>
+      <p class="brand-sub">Xception · Wav2Vec 2.0 · Multi-task Late Fusion</p>
+    </div>
+    <div class="brand-meta">
+      <span class="badge badge-accent">CANLI DEMO</span>
+      <span class="device">Cihaz: <code>{{ model_device }}</code></span>
+      <span class="device">Model: <code>best_model.pt</code></span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Aggregate test results bar -->
+  <section class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">TEST · video AUC</div>
+      <div class="stat-value">{{ '%.4f' | format(aggregate.video_auc) }}</div>
+      <div class="stat-sub">F1 {{ '%.4f' | format(aggregate.video_f1) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">TEST · audio AUC</div>
+      <div class="stat-value">{{ '%.4f' | format(aggregate.audio_auc) }}</div>
+      <div class="stat-sub">F1 {{ '%.4f' | format(aggregate.audio_f1) }}</div>
+    </div>
+    <div class="stat-card stat-card-hl">
+      <div class="stat-label">TEST · any AUC</div>
+      <div class="stat-value">{{ '%.4f' | format(aggregate.any_auc) }}</div>
+      <div class="stat-sub">F1 {{ '%.4f' | format(aggregate.any_f1) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">TEST SET</div>
+      <div class="stat-value">{{ aggregate.test_n }}</div>
+      <div class="stat-sub">video, 75 ünlü</div>
+    </div>
+  </section>
+
+  <!-- Sample picker -->
+  <section class="card">
+    <div class="card-head">
+      <h2>1 · Örnek video seç</h2>
+      <p class="muted">samples/ klasöründeki videolardan biri (kategori yoluna göre tespit ediliyor)</p>
+    </div>
+    <div class="card-body">
+      {% if samples %}
+        <div class="sample-grid">
+          {% for s in samples %}
+            <button class="sample-card" data-sample="{{ s.rel }}" data-category="{{ s.category }}">
+              <div class="sample-thumb">
+                <span class="sample-icon">🎬</span>
+                <video muted preload="metadata" src="/samples/{{ s.rel }}"></video>
+              </div>
+              <div class="sample-meta">
+                <div class="sample-name">{{ s.name }}</div>
+                <div class="sample-cat">
+                  {% if s.category %}
+                    <span class="cat-pill cat-{{ s.category|lower }}">{{ s.category }}</span>
+                  {% else %}
+                    <span class="cat-pill cat-unknown">?</span>
+                  {% endif %}
+                </div>
+              </div>
+            </button>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <p>Henüz örnek yok. <code>demo_site/samples/</code> klasörüne <code>.mp4</code> dosyası bırakın.</p>
+          <p class="muted">
+            Tipsiz adlandırılmış videolar için: dosya adında <code>RealVideo-RealAudio</code>,
+            <code>FakeVideo-RealAudio</code>, <code>RealVideo-FakeAudio</code>, veya
+            <code>FakeVideo-FakeAudio</code> içerirse kategori (ground truth) otomatik
+            çıkarılır.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Upload -->
+  <section class="card">
+    <div class="card-head">
+      <h2>2 · Veya video yükle</h2>
+      <p class="muted">Diskinizden bir .mp4 seçin (en fazla 200 MB)</p>
+    </div>
+    <div class="card-body">
+      <form id="upload-form" enctype="multipart/form-data" class="upload-form">
+        <input type="file" id="file-input" name="file" accept="video/mp4,video/quicktime">
+        <button type="submit" class="btn btn-primary">Yükle ve Analiz Et</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="result-section" class="card result-hidden">
+    <div class="card-head">
+      <h2>3 · Sonuç</h2>
+      <p class="muted">Modelin 3 başının çıktıları + toplam karar</p>
+    </div>
+    <div class="card-body">
+
+      <div id="loader" class="loader-row">
+        <div class="spinner"></div>
+        <span>Video işleniyor (MTCNN → 8 frame → Wav2Vec → 3 head)...</span>
+      </div>
+
+      <div id="result-body" class="result-body hidden">
+        <div class="result-top">
+          <video id="result-video" controls></video>
+          <div class="decision-box" id="decision-box">
+            <div class="decision-label" id="decision-label">—</div>
+            <div class="decision-sub"   id="decision-sub">—</div>
+            <div class="decision-meta"  id="decision-meta">—</div>
+          </div>
+        </div>
+
+        <div class="heads-grid">
+          <div class="head-card">
+            <div class="head-label">VIDEO HEAD</div>
+            <div class="head-question">"Görüntü sahte mi?"</div>
+            <div class="bar-wrap"><div class="bar" id="bar-video"></div></div>
+            <div class="head-score" id="score-video">0.000</div>
+            <div class="head-truth" id="truth-video"></div>
+          </div>
+          <div class="head-card">
+            <div class="head-label">AUDIO HEAD</div>
+            <div class="head-question">"Ses sahte mi?"</div>
+            <div class="bar-wrap"><div class="bar" id="bar-audio"></div></div>
+            <div class="head-score" id="score-audio">0.000</div>
+            <div class="head-truth" id="truth-audio"></div>
+          </div>
+          <div class="head-card head-card-hl">
+            <div class="head-label">ANY HEAD</div>
+            <div class="head-question">"Herhangi biri sahte mi?"</div>
+            <div class="bar-wrap"><div class="bar" id="bar-any"></div></div>
+            <div class="head-score" id="score-any">0.000</div>
+            <div class="head-truth" id="truth-any"></div>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-cell">
+            <span class="info-key">Yüz tespit olasılığı</span>
+            <span class="info-val" id="info-face">—</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-key">Audio RMS</span>
+            <span class="info-val" id="info-rms">—</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-key">Preprocess</span>
+            <span class="info-val" id="info-pre">—</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-key">Inference</span>
+            <span class="info-val" id="info-inf">—</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-key">Toplam süre</span>
+            <span class="info-val" id="info-total">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="result-error" class="error-box hidden"></div>
+    </div>
+  </section>
+
+  <!-- Per-category context -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Kategori bazlı test recall (referans)</h2>
+      <p class="muted">3.276 test videosu üzerinde, kategori başına başarımız</p>
+    </div>
+    <div class="card-body">
+      <table class="cat-table">
+        <thead>
+          <tr><th>Kategori</th><th>Açıklama</th><th>n</th><th>any recall</th></tr>
+        </thead>
+        <tbody>
+          {% for k, c in aggregate.per_category.items() %}
+            <tr>
+              <td><span class="cat-pill cat-{{ k|lower }}">{{ k }}</span></td>
+              <td>{{ c.label }}</td>
+              <td>{{ c.n }}</td>
+              <td>
+                {% if c.any_recall is not none %}
+                  <strong>{{ '%.4f' | format(c.any_recall) }}</strong>
+                {% else %}
+                  <span class="muted">gerçek</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Grup 11 · Nur Yağmur Tuncer</p>
+    <p class="muted">FakeAVCeleb v1.2 üzerinde eğitildi · subject-disjoint split · A100 80GB</p>
+  </footer>
+
+</main>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
