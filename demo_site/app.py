@@ -1,12 +1,17 @@
 """Flask demo for the multimodal deepfake detector."""
-import os, time, uuid
+import os, sys, time, uuid
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 
+HERE = Path(__file__).parent.resolve()
+PROJECT_ROOT = HERE.parent
+if str(PROJECT_ROOT / 'src') not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / 'src'))
+
+from deepfake_detector.reporting import build_report
 from inference import DeepfakePredictor, interpret, category_from_path
 
-HERE = Path(__file__).parent.resolve()
 MODEL_PATH   = os.environ.get('MODEL_PATH', '').strip()
 SAMPLES_DIR  = HERE / 'samples'
 UPLOADS_DIR  = HERE / 'uploads'
@@ -178,12 +183,14 @@ def analyze():
             'audio': a_pred == truth['audio_fake'],
             'any':   y_pred == truth['any_fake'],
         }
+    report = build_report(scores, decision, info, truth)
 
     return jsonify({
         'ok': True,
         'video_url': video_url,
         'scores': scores,
         'decision': decision,
+        'report': report,
         'info': info,
         'ground_truth': truth,
         'correct': correct,

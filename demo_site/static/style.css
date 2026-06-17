@@ -306,6 +306,15 @@ input[type="file"] {
 }
 .btn-primary:hover { background: var(--accent-dk); }
 .btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+.btn-secondary {
+    background: var(--bg);
+    color: var(--primary);
+    border: 1px solid var(--divider);
+}
+.btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent-dk);
+}
 
 /* ============ Results ============ */
 .result-hidden { display: none; }
@@ -451,6 +460,35 @@ input[type="file"] {
 .info-cell { display: flex; flex-direction: column; gap: 2px; }
 .info-key { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .info-val { color: var(--primary); font-weight: 600; }
+
+/* ============ Report box ============ */
+.report-box {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-soft);
+    border: 1px solid var(--divider);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+}
+.report-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.report-head h3 {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    margin-top: 3px;
+}
+.report-findings {
+    display: grid;
+    gap: 6px;
+    padding-left: 18px;
+    font-size: 13px;
+}
 
 /* ============ Error box ============ */
 .error-box {

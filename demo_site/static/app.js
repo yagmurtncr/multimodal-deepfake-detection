@@ -5,6 +5,7 @@
     const loader = $('loader');
     const resultBody = $('result-body');
     const errorBox = $('result-error');
+    let lastReport = null;
 
     function showLoading() {
         resultSection.classList.remove('result-hidden');
@@ -91,6 +92,17 @@
         $('info-pre').textContent   = (info.preprocess_s ?? '—') + ' s';
         $('info-inf').textContent   = (info.inference_s  ?? '—') + ' s';
         $('info-total').textContent = (data.elapsed_total ?? '—') + ' s';
+
+        // Structured explanation report
+        lastReport = data.report || null;
+        $('report-summary').textContent = lastReport ? lastReport.summary : 'Rapor üretilemedi.';
+        const findings = $('report-findings');
+        findings.innerHTML = '';
+        (lastReport?.findings || []).forEach((finding) => {
+            const item = document.createElement('li');
+            item.textContent = finding;
+            findings.appendChild(item);
+        });
     }
 
     async function analyze(payload) {
@@ -132,6 +144,20 @@
             fd.append('mode', 'upload');
             fd.append('file', fileInput.files[0]);
             analyze(fd);
+        });
+    }
+
+    const downloadBtn = $('download-report');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            if (!lastReport) return;
+            const blob = new Blob([JSON.stringify(lastReport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'deepfake-analysis-report.json';
+            link.click();
+            URL.revokeObjectURL(url);
         });
     }
 })();

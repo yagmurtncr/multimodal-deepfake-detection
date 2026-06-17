@@ -21,6 +21,9 @@ flask>=3.0,<4.0
 matplotlib>=3.7,<4.0
 seaborn>=0.13,<1.0
 
+# Lightweight tests
+pytest>=8.0,<10.0
+
 # Optional SyncNet comparison scripts
 # python_speech_features>=0.6
 # scipy>=1.10,<2.0
