@@ -24,6 +24,13 @@ threshold/temperature post-processing, and a pretrained-SyncNet comparison.
 > and the FakeAVCeleb video clips are **not included** (size + research-only license + privacy). See
 > *Kurulum & Çalıştırma* and *Veri seti & Etik* below.
 
+Additional documentation:
+
+- [Model Card](MODEL_CARD.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Demo README](demo_site/README.md)
+
 ---
 
 ## Proje Özeti
@@ -144,6 +151,15 @@ pytest tests
 
 Bu testler ağır model ağırlığı indirmez; raporlama ve yardımcı mantıkların bozulmadığını kontrol eder.
 
+### 7. Sonuç özeti üretme
+
+```bash
+python scripts/summarize_results.py --results-dir results
+python scripts/summarize_results.py --results-dir results --output evaluation_summary.md
+```
+
+Bu komut `test_results.json` ve `ablation.csv` dosyalarından Markdown tablo özeti üretir.
+
 ## Veri seti & Etik
 
 - **Veri seti:** [FakeAVCeleb v1.2](https://github.com/DASH-Lab/FakeAVCeleb) — 21.544 video. Subject-disjoint split (350/75/75 ünlü; train/val/test kesişimi sıfır), böylece model yüz tanımayı değil sahteleme imzalarını öğrenir.
@@ -155,10 +171,11 @@ Bu testler ağır model ağırlığı indirmez; raporlama ve yardımcı mantıkl
 | Yol | İçerik |
 |-----|--------|
 | `src/deepfake_detector/` | Demo ve CLI tarafından paylaşılan yardımcı raporlama kodu |
-| `scripts/` | Komut satırı araçları, ör. `analyze_video.py` |
+| `scripts/` | Komut satırı araçları, ör. `analyze_video.py`, `summarize_results.py` |
 | `tests/` | Hafif unit testler |
 | `notebook_v2/` | Eğitim ve analiz scriptleri: `deepfake_v3.py`, `v4_cross_attention.py`, `v3_post_processing.py`, `dataset_audit.py`, `syncnet_*.py`, `smoke_test.py`, `live_monitor.py` |
 | `demo_site/` | Flask demo: `app.py`, `inference.py`, `static/`, `templates/` |
+| `docs/` | Mimari ve roadmap dokümantasyonu |
 | `results/` | Eğitim çıktıları: ROC/confusion/training PNG'leri, `test_results.json`, `ablation.csv`, `per_category.csv` |
 | `requirements.txt` | Python bağımlılıkları |
 | `.env.example` | Demo için örnek `MODEL_PATH` ayarı |
