@@ -1,86 +1,64 @@
-# Colab Quick Start — v2 Eğitimi
+# Colab Quick Start — v3 Training
 
-A100 runtime'da yeni notebook aç ve **5 hücre** çalıştır.
+Use an A100/T4 GPU runtime. The FakeAVCeleb videos are not included in this repository; mount or upload your licensed copy before running training.
 
-## Hücre 1 — Bağımlılıklar (~2 dk)
+## 1. Install Dependencies
+
 ```python
-!pip install -q facenet-pytorch transformers librosa timm scikit-learn \
-    matplotlib seaborn tqdm opencv-python-headless albumentations
+!pip install -q torch torchvision timm transformers facenet-pytorch librosa \
+    opencv-python-headless numpy pandas scikit-learn tqdm matplotlib seaborn
 ```
 
-## Hücre 2 — Drive mount + Veri seti hazırlığı (~5-8 dk)
+## 2. Mount Drive And Prepare Dataset
+
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
 
-# Drive'a 6.4 GB zip'in yüklenmiş olduğunu varsay
+# Update this path to your own licensed FakeAVCeleb archive or extracted folder.
+DATASET_DIR = '/content/FakeAVCeleb_v1.2'
 ZIP = '/content/drive/MyDrive/FakeAVCeleb/FakeAVCeleb_v1.2.zip'
+
 import os
-if not os.path.exists('/content/FakeAVCeleb_v1.2'):
+if not os.path.exists(DATASET_DIR):
     !cp "{ZIP}" /content/
     !cd /content && unzip -q "FakeAVCeleb_v1.2.zip"
-!ls /content/FakeAVCeleb_v1.2
+!ls "{DATASET_DIR}"
 ```
 
-## Hücre 3 — Script'i indir / kopyala
+## 3. Clone This Repository
+
 ```python
-# Yöntem A: GitHub
-# !git clone https://github.com/<user>/deepfake_grup11.git
-# !cp deepfake_grup11/notebook_v2/deepfake_v2.py /content/
-
-# Yöntem B: scp / upload
-# Colab UI'dan dosya yükle, /content/deepfake_v2.py yoluna
+!git clone https://github.com/yagmurtncr/multimodal-deepfake-detection.git
+%cd /content/multimodal-deepfake-detection
 ```
 
-## Hücre 4 — Tek komutla çalıştır
+## 4. Run The v3 Pipeline
+
 ```python
 %env DATASET_ROOT=/content/FakeAVCeleb_v1.2
 %env WORK_DIR=/content/work
-%env RESULTS_DIR=/content/drive/MyDrive/Grup11_Deepfake_Results
 
-!mkdir -p /content/work /content/drive/MyDrive/Grup11_Deepfake_Results
-!python /content/deepfake_v2.py --stage all --epochs 15 --batch 32 --workers 4
+!mkdir -p /content/work
+!python notebook_v2/deepfake_v3.py --stage scan
+!python notebook_v2/deepfake_v3.py --stage train --epochs 12 --batch 24 --workers 4
+!python notebook_v2/deepfake_v3.py --stage eval
+!python notebook_v2/deepfake_v3.py --stage ablation
 ```
 
-## Hücre 5 — Sonuçları Drive'a kopyala
+## 5. Save Artifacts
+
 ```python
+!mkdir -p /content/drive/MyDrive/MultimodalDeepfakeResults
 !cp /content/work/*.png /content/work/*.csv /content/work/*.json /content/work/best_model.pt \
-   /content/drive/MyDrive/Grup11_Deepfake_Results/
-!ls -la /content/drive/MyDrive/Grup11_Deepfake_Results/
+   /content/drive/MyDrive/MultimodalDeepfakeResults/
 ```
 
----
+## Debug Tips
 
-## Aşamalı (debug için)
-
-Önce sadece scan:
-```bash
-!python /content/deepfake_v2.py --stage scan
-```
-Sonra küçük epoch ile dene:
-```bash
-!python /content/deepfake_v2.py --stage train --epochs 2 --batch 16
-```
-Çalışınca tam koş.
-
----
-
-## Beklenen sürelendirme (A100)
-
-| Stage | Süre |
-|-------|------|
-| `scan` | ~30 sn |
-| `train` (15 epoch, ~4.6K video) | ~70-90 dk |
-| `eval` | ~5 dk |
-| `ablation` (7 config) | ~25-35 dk |
-| **Total** | **~2-2.5 saat** |
-
-## Sorunlar ve Çözümler
-
-| Hata | Çözüm |
-|------|-------|
-| `CUDA OOM` | `--batch 16` ya da `--workers 2` |
-| `MTCNN no face` çok | `min_face_size=40` (kodda düzelt) |
-| Wav2Vec download yavaş | İlk çalıştırma sonrası HF cache var, sonraki run hızlı |
-| Dataloader hang | `--workers 0` ile debug |
-| Sonuçlar Drive'a kopyalanmıyor | Drive quota dolmuş olabilir, `df -h` kontrol |
+| Problem | Fix |
+|---|---|
+| CUDA OOM | Lower `--batch` to `8` or `16`. |
+| DataLoader hangs | Use `--workers 0` for debugging. |
+| Many `no_face` failures | Try lowering `min_face_size` in `VideoProcessor`. |
+| First run downloads slowly | Wav2Vec2 and Xception weights are cached after the first run. |

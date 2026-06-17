@@ -1,23 +1,18 @@
-"""
-Flask demo — Grup 11 Multimodal Deepfake Tespit
-Local, Colab gerekmez, model checkpoint'inden direkt yükler.
-
-Çalıştırmak için:
-    python app.py
-Açılacak adres: http://127.0.0.1:5000
-"""
-import os, sys, json, time, uuid
+"""Flask demo for the multimodal deepfake detector."""
+import os, time, uuid
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
 
 from inference import DeepfakePredictor, interpret, category_from_path
 
 HERE = Path(__file__).parent.resolve()
-MODEL_PATH   = os.environ.get('MODEL_PATH', r'C:\Users\Tombulteke\Downloads\best_model.pt')
+MODEL_PATH   = os.environ.get('MODEL_PATH', '').strip()
 SAMPLES_DIR  = HERE / 'samples'
 UPLOADS_DIR  = HERE / 'uploads'
 UPLOADS_DIR.mkdir(exist_ok=True)
 SAMPLES_DIR.mkdir(exist_ok=True)
+ALLOWED_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv'}
 
 # Test set aggregate metrics (gösterim için)
 AGGREGATE = {
@@ -33,18 +28,53 @@ AGGREGATE = {
     },
 }
 
-print('[app] Model yükleniyor (~10-15 sn)...')
-predictor = DeepfakePredictor(MODEL_PATH)
-print('[app] hazır.')
-
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024   # 200 MB upload limit
+predictor = None
+predictor_error = None
+
+
+def allowed_video(filename):
+    return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
+
+
+def safe_child(base, user_path):
+    """Resolve a user-controlled path and ensure it stays under base."""
+    candidate = (base / user_path).resolve()
+    try:
+        candidate.relative_to(base.resolve())
+    except ValueError:
+        return None
+    return candidate
+
+
+def load_predictor():
+    global predictor, predictor_error
+    if predictor is not None or predictor_error is not None:
+        return predictor
+    if not MODEL_PATH:
+        predictor_error = 'MODEL_PATH environment variable is not set.'
+        return None
+    model_file = Path(MODEL_PATH).expanduser()
+    if not model_file.exists():
+        predictor_error = f'Model checkpoint not found: {model_file}'
+        return None
+    try:
+        print('[app] Loading model (~10-15 sec)...')
+        predictor = DeepfakePredictor(str(model_file))
+        print('[app] ready.')
+    except Exception as exc:
+        predictor_error = f'Model load failed: {exc}'
+        print(f'[app] {predictor_error}')
+    return predictor
 
 
 def list_samples():
-    """samples/ klasöründeki mp4'leri kategorisiyle birlikte listele."""
+    """List sample videos with path-derived categories."""
     out = []
-    for p in sorted(SAMPLES_DIR.glob('**/*.mp4')):
+    for p in sorted(SAMPLES_DIR.glob('**/*')):
+        if not p.is_file() or p.suffix.lower() not in ALLOWED_EXTENSIONS:
+            continue
         rel = p.relative_to(SAMPLES_DIR).as_posix()
         cat, vfake, afake, any_fake = category_from_path(str(p))
         out.append({
@@ -60,20 +90,30 @@ def list_samples():
 
 @app.route('/')
 def index():
+    pred = load_predictor()
     return render_template('index.html',
                             samples=list_samples(),
                             aggregate=AGGREGATE,
-                            model_device=str(predictor.device))
+                            model_ready=pred is not None,
+                            model_error=predictor_error,
+                            model_path=MODEL_PATH or None,
+                            model_device=str(pred.device) if pred else 'not loaded')
 
 
 @app.route('/samples/<path:filename>')
 def serve_sample(filename):
-    return send_from_directory(SAMPLES_DIR, filename)
+    path = safe_child(SAMPLES_DIR, filename)
+    if path is None or not path.exists() or path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        return jsonify({'ok': False, 'error': 'sample not found'}), 404
+    return send_from_directory(SAMPLES_DIR, path.relative_to(SAMPLES_DIR).as_posix())
 
 
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
-    return send_from_directory(UPLOADS_DIR, filename)
+    path = safe_child(UPLOADS_DIR, filename)
+    if path is None or not path.exists() or path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        return jsonify({'ok': False, 'error': 'upload not found'}), 404
+    return send_from_directory(UPLOADS_DIR, path.relative_to(UPLOADS_DIR).as_posix())
 
 
 @app.route('/api/analyze', methods=['POST'])
@@ -82,11 +122,17 @@ def analyze():
        - mode='sample' + sample_name → samples/<name> üzerinde inference
        - mode='upload' + uploaded file → /uploads'a kaydet, inference
     """
+    pred = load_predictor()
+    if pred is None:
+        return jsonify({'ok': False, 'error': predictor_error or 'model is not available'}), 503
+
     mode = request.form.get('mode', 'sample')
     if mode == 'sample':
         sample_name = request.form.get('sample', '').strip()
-        video_path = SAMPLES_DIR / sample_name
-        if not video_path.exists():
+        if not allowed_video(sample_name):
+            return jsonify({'ok': False, 'error': 'unsupported sample type'}), 400
+        video_path = safe_child(SAMPLES_DIR, sample_name)
+        if video_path is None or not video_path.exists():
             return jsonify({'ok': False, 'error': f'sample not found: {sample_name}'}), 404
         ground = category_from_path(str(video_path))
         video_url = f'/samples/{sample_name}'
@@ -94,18 +140,21 @@ def analyze():
         f = request.files.get('file')
         if not f or not f.filename:
             return jsonify({'ok': False, 'error': 'no file uploaded'}), 400
-        # Safe name
-        safe = f"{uuid.uuid4().hex[:8]}_{Path(f.filename).name}"
+        if not allowed_video(f.filename):
+            return jsonify({'ok': False, 'error': 'unsupported file type'}), 400
+        clean_name = secure_filename(Path(f.filename).name)
+        if not clean_name:
+            return jsonify({'ok': False, 'error': 'invalid filename'}), 400
+        safe = f"{uuid.uuid4().hex[:8]}_{clean_name}"
         video_path = UPLOADS_DIR / safe
         f.save(video_path)
-        # Try to detect ground truth from original filename
         ground = category_from_path(f.filename)
         video_url = f'/uploads/{safe}'
     else:
         return jsonify({'ok': False, 'error': 'unknown mode'}), 400
 
     t0 = time.time()
-    scores, info = predictor.predict(str(video_path))
+    scores, info = pred.predict(str(video_path))
     if scores is None:
         return jsonify({'ok': False, 'error': 'preprocess failed: ' + str(info.get('fail_reason', '?')),
                          'info': info}), 422

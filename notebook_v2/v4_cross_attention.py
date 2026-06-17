@@ -10,6 +10,7 @@ v3'ün üzerine inşa edilir:
 Eğitim: 3-5 epoch warm-start, lr=5e-5, AdamW
 """
 import os, sys, time, json, math, argparse, random
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
@@ -20,7 +21,9 @@ from torch.cuda.amp import autocast, GradScaler
 from tqdm.auto import tqdm
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, recall_score, precision_score
 
-sys.path.insert(0, '/content')
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 from deepfake_v3 import (FakeAVDataset, collate_fn, make_loader,
                           ImageStream, AudioStream, SyncStream,
                           MultiTaskDetector, EMBED_DIM, DEVICE,

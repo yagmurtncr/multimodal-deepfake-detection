@@ -54,6 +54,25 @@ code {
 .muted { color: var(--muted); font-size: 0.92em; }
 .hidden { display: none !important; }
 
+.status-banner {
+    display: grid;
+    gap: 6px;
+    margin: 24px 0 0;
+    padding: 14px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--divider);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    font-size: 13px;
+}
+.status-warning {
+    border-left: 3px solid var(--amber);
+    background: #FFFBEB;
+}
+.status-banner strong {
+    color: var(--primary);
+}
+
 /* ============ Topbar ============ */
 .topbar {
     background: var(--bg);
@@ -190,6 +209,15 @@ code {
     border-color: var(--accent);
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+}
+.sample-card:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.sample-card:disabled:hover {
+    border-color: var(--divider);
+    box-shadow: none;
+    transform: none;
 }
 .sample-thumb {
     background: var(--bg-soft2);

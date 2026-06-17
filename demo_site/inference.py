@@ -4,6 +4,7 @@ Local inference wrapper — loads best_model.pt, takes mp4 path → returns scor
 Mimari: deepfake_v3.py'den birebir kopya (eğitilen modelle uyumlu olmak için).
 """
 import os, sys, time
+from pathlib import Path
 import numpy as np
 import cv2
 import librosa
@@ -240,9 +241,15 @@ class VideoPreprocessor:
 class DeepfakePredictor:
     def __init__(self, model_path, device=None):
         self.device = device or DEVICE
+        model_path = Path(model_path).expanduser()
+        if not model_path.exists():
+            raise FileNotFoundError(f'checkpoint not found: {model_path}')
         print(f'[predictor] device={self.device}')
         self.model = MultiTaskDetector(EMBED_DIM).to(self.device)
-        sd = torch.load(model_path, map_location=self.device, weights_only=False)
+        try:
+            sd = torch.load(model_path, map_location=self.device, weights_only=True)
+        except TypeError:
+            sd = torch.load(model_path, map_location=self.device)
         if 'model_state_dict' in sd:
             sd = sd['model_state_dict']
         self.model.load_state_dict(sd)

@@ -17,12 +17,19 @@
     <div class="brand-meta">
       <span class="badge badge-accent">CANLI DEMO</span>
       <span class="device">Cihaz: <code>{{ model_device }}</code></span>
-      <span class="device">Model: <code>best_model.pt</code></span>
+      <span class="device">Model: <code>{{ model_path or 'MODEL_PATH missing' }}</code></span>
     </div>
   </div>
 </header>
 
 <main class="container">
+  {% if not model_ready %}
+    <section class="status-banner status-warning">
+      <strong>Model yüklenmedi.</strong>
+      <span>{{ model_error }}</span>
+      <code>MODEL_PATH=/path/to/best_model.pt python app.py</code>
+    </section>
+  {% endif %}
 
   <!-- Aggregate test results bar -->
   <section class="stats-bar">
@@ -58,7 +65,7 @@
       {% if samples %}
         <div class="sample-grid">
           {% for s in samples %}
-            <button class="sample-card" data-sample="{{ s.rel }}" data-category="{{ s.category }}">
+            <button class="sample-card" data-sample="{{ s.rel }}" data-category="{{ s.category }}" {% if not model_ready %}disabled{% endif %}>
               <div class="sample-thumb">
                 <span class="sample-icon">🎬</span>
                 <video muted preload="metadata" src="/samples/{{ s.rel }}"></video>
@@ -98,8 +105,8 @@
     </div>
     <div class="card-body">
       <form id="upload-form" enctype="multipart/form-data" class="upload-form">
-        <input type="file" id="file-input" name="file" accept="video/mp4,video/quicktime">
-        <button type="submit" class="btn btn-primary">Yükle ve Analiz Et</button>
+        <input type="file" id="file-input" name="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska" {% if not model_ready %}disabled{% endif %}>
+        <button type="submit" class="btn btn-primary" {% if not model_ready %}disabled{% endif %}>Yükle ve Analiz Et</button>
       </form>
     </div>
   </section>

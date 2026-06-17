@@ -17,8 +17,8 @@ multimodality: the *Real-Video / Fake-Audio* category (only the audio is synthet
 image-only model — is still caught at **93.3% recall**.
 
 **Test results (v3 baseline):** any-AUC **0.9994**, video-AUC 0.9991, audio-AUC 0.9982.
-The repo also documents an ablation study, cross-attention fusion (v4), TTA + threshold/temperature
-post-processing, and a pretrained-SyncNet comparison.
+The repo also includes an ablation study, cross-attention fusion experiments (v4), TTA +
+threshold/temperature post-processing, and a pretrained-SyncNet comparison.
 
 > ⚠️ This repository contains **code, documentation and result artifacts only**. Trained model weights
 > and the FakeAVCeleb video clips are **not included** (size + research-only license + privacy). See
@@ -30,7 +30,7 @@ post-processing, and a pretrained-SyncNet comparison.
 
 - **Hedef:** FakeAVCeleb veri seti üzerinde Xception + Wav2Vec 2.0 + Two-Stream Sync mimarisi ile multimodal deepfake tespiti.
 - **Yaklaşım:** Late Fusion + paylaşımlı MLP trunk + 3 görev başlığı (video / audio / any).
-- **Süre:** 1 günlük yoğun çalışma (eğitim + değerlendirme + sunum hazırlığı).
+- **Süre:** Yoğun eğitim ve değerlendirme çalışması.
 - **Donanım:** Google Colab Pro A100 80GB GPU.
 
 ## Mimari
@@ -101,18 +101,31 @@ Eğitilmiş `best_model.pt` **repoya dahil değildir.** İki seçenek:
 ### 3. Demo web arayüzü
 ```bash
 cd demo_site
-# Model yolunu ortam değişkeniyle verin (varsayılan kod içindeki yola işaret eder):
-#   Windows PowerShell:  $env:MODEL_PATH = "C:\yol\best_model.pt"
-#   Linux/Mac:           export MODEL_PATH=/yol/best_model.pt
+# Model yolunu ortam değişkeniyle verin:
+#   Windows PowerShell:  $env:MODEL_PATH = "C:\path\to\best_model.pt"
+#   Linux/Mac:           export MODEL_PATH=/path/to/best_model.pt
 python app.py
 # → http://127.0.0.1:5000
 ```
-Demo, kendi videonuzu **yükleyerek** çalışır. Hazır örnekler için `demo_site/samples/` klasörüne
-`.mp4` ekleyin (bkz. [demo_site/samples/README.md](demo_site/samples/README.md)).
+Demo, `MODEL_PATH` verilmemişse yine açılır ve arayüzde model uyarısı gösterir; analiz endpoint'i
+model yüklenene kadar çalışmaz. Kendi videonuzu yükleyebilir veya hazır örnekler için
+`demo_site/samples/` klasörüne `.mp4`, `.mov`, `.avi` ya da `.mkv` ekleyebilirsiniz
+(bkz. [demo_site/samples/README.md](demo_site/samples/README.md)).
 
 ### 4. Eğitim
 Ana eğitim scripti `notebook_v2/deepfake_v3.py` içindedir. FakeAVCeleb verisine erişim ve GPU ortamı
 gereklidir.
+
+```bash
+set DATASET_ROOT=C:\path\to\FakeAVCeleb_v1.2
+set WORK_DIR=C:\path\to\work
+python notebook_v2/deepfake_v3.py --stage scan
+python notebook_v2/deepfake_v3.py --stage train --epochs 12 --batch 24 --workers 4
+python notebook_v2/deepfake_v3.py --stage eval
+python notebook_v2/deepfake_v3.py --stage ablation
+```
+
+Colab için kısa rehber: [notebook_v2/colab_quickstart.md](notebook_v2/colab_quickstart.md).
 
 ## Veri seti & Etik
 
@@ -124,10 +137,12 @@ gereklidir.
 
 | Yol | İçerik |
 |-----|--------|
-| `notebook_v2/` | Tüm Python scriptleri: `deepfake_v3.py` (ana eğitim), `v4_cross_attention.py`, `v3_post_processing.py`, `dataset_audit.py`, `syncnet_*.py`, `smoke_test.py`, `live_monitor.py` |
+| `notebook_v2/` | Eğitim ve analiz scriptleri: `deepfake_v3.py`, `v4_cross_attention.py`, `v3_post_processing.py`, `dataset_audit.py`, `syncnet_*.py`, `smoke_test.py`, `live_monitor.py` |
 | `demo_site/` | Flask demo: `app.py`, `inference.py`, `static/`, `templates/` |
 | `results/` | Eğitim çıktıları: ROC/confusion/training PNG'leri, `test_results.json`, `ablation.csv`, `per_category.csv` |
 | `requirements.txt` | Python bağımlılıkları |
+| `.env.example` | Demo için örnek `MODEL_PATH` ayarı |
+| `LICENSE` | MIT lisansı |
 
 ## Ekip
 
